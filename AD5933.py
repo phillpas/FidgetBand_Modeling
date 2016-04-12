@@ -3,12 +3,12 @@ from ctypes.wintypes import *
 import math
 
 class AD5933:
-'''
+    '''
     This class is used to control the AD5933.
     Currently works by loading the DLL provided with the AD5933 evaluation kit.
     '''
         
-        def __init__(self, path_to_dll, logDebug = False):
+    def __init__(self, path_to_dll, logDebug = False):
         self.logDebug = logDebug
         
         self.dll = WinDLL(path_to_dll)
@@ -67,39 +67,41 @@ class AD5933:
         self.dllDisconnect.restype = c_int
         self.dllDisconnect.argtypes = [c_uint]
 
+    #find and return any connected AD5933 EK boards
+    def findBoards(self):
+        numBoards = c_uint()
+            partPaths = c_char()
+            searchResult = self.dllSearchForBoards(self.VID, self.PID, byref(numBoards), byref(partPaths))
+            if searchResult == 0:
+                return (numBoards, partPaths)
+        else:
+            self.log("No Boards Found!")
 
-def findBoards(self):
-    numBoards = c_uint()
-        partPaths = c_char()
-        searchResult = self.dllSearchForBoards(self.VID, self.PID, byref(numBoards), byref(partPaths))
-        if searchResult == 0:
-            return (numBoards, partPaths)
-    else:
-        self.log("No Boards Found!")
+    #connect to the board connected at "boardPath"
+    def connectToBoard(self,boardPath):
+        handle = c_uint()
+            connectResult = self.dllConnect(self.VID, self.PID, boardPath, byref(handle))
+            self.handle = handle
+            if connectResult == 0:
+                self.log("connected to board")
+                return handle
+        else:
+            self.log("Error connecting to board!")
 
-
-def connectToBoard(self,boardPath):
-    handle = c_uint()
-        connectResult = self.dllConnect(self.VID, self.PID, boardPath, byref(handle))
-        self.handle = handle
-        if connectResult == 0:
-            self.log("connected to board")
-            return handle
-    else:
-        self.log("Error connecting to board!")
-
-def write(self,handle, register, dataLen):
-    if not handle:
-        self.log("No Connection")
+    #write dataLen bytes to register
+    def write(self,handle, register, dataLen):
+        if not handle:
+            self.log("No Connection")
             return
         writeResult = self.dllRequest(handle, self.REQUEST, self.VALUE, register, c_ubyte(0), dataLen, c_ubyte(0))
         if not writeResult == 0:
             self.log("Write Error!")
-                
-                def read(self,handle, register, dataLen):
-                    if not handle:
-self.log("No Connection")
-    return
+    
+    #read dataLen bytes from register     
+    def read(self,handle, register, dataLen):
+        if not handle:
+            self.log("No Connection")
+            return
         data = c_ubyte()
         readResult = self.dllRequest(handle, self.REQUEST, self.VALUE, register, c_ubyte(1), dataLen, byref(data))
         if readResult == 0:
@@ -107,38 +109,40 @@ self.log("No Connection")
         else:
             self.log("Read Error!")
 
+    #read current temperature from temperature register and return it (in celcius)
+    def readTemp(self):
+        self.log("Reading temp")
+            
+            #write to measure temp
+            self.write(self.handle,0x9080,0)
+            
+            #now read both bytes
+            byte1 = self.read(self.handle,0x93,1).value
+            byte2 = self.read(self.handle,0x92,1).value
+            
+            #convert to celcius
+            maxBits = 14
+            total = 0
+            idx = 0
+            while idx < maxBits:
+                if idx < 8:
+                    if byte1 & 1:
+                        total = total + pow(2,idx)
+                    byte1 = byte1 >> 1
+                else:
+                    if byte2 & 1:
+                        total = total + pow(2,idx)
+                    byte2 = byte2 >> 1
+                idx += 1
+            return total/32.0
 
-def readTemp(self):
-    self.log("Reading temp")
-        
-        #write to measure temp
-        self.write(self.handle,0x9080,0)
-        
-        #now read both bytes
-        byte1 = self.read(self.handle,0x93,1).value
-        byte2 = self.read(self.handle,0x92,1).value
-        
-        #convert to celcius
-        maxBits = 14
-        total = 0
-        idx = 0
-        while idx < maxBits:
-            if idx < 8:
-                if byte1 & 1:
-                    total = total + pow(2,idx)
-                byte1 = byte1 >> 1
-            else:
-                if byte2 & 1:
-                    total = total + pow(2,idx)
-                byte2 = byte2 >> 1
-            idx += 1
-        return total/32.0
-
-def readStartFreq(self):
-    b0 = self.read(self.handle,0x84,1).value
+    #read the start frequency from the start frequency register
+    def readStartFreq(self):
+        b0 = self.read(self.handle,0x84,1).value
         b1 = self.read(self.handle,0x83,1).value
         b2 = self.read(self.handle,0x82,1).value
     
+    #write start frequency set in init to the start frequency register
     def writeStartFreq(self):
         self.log("Writing startFreq")
         freq = int((float(self.START_FREQ)/ (float(self.CLOCK_FREQ)/ 4)) * pow(2,27))
@@ -162,10 +166,10 @@ def readStartFreq(self):
         val2 = int(hex(b2) + '82',0)
         self.write(self.handle, val0, 0)
         self.write(self.handle, val1, 0)
-    self.write(self.handle, val2, 0)
+        self.write(self.handle, val2, 0)
 
-def readNumFreqInc(self):
-    self.log("Reading numFreqInc")
+    def readNumFreqInc(self):
+        self.log("Reading numFreqInc")
         b0 = self.read(self.handle,0x89,1).value
         b1 = self.read(self.handle,0x88,1).value
 
@@ -183,9 +187,8 @@ def readNumFreqInc(self):
         self.write(self.handle, val0, 0)
         self.write(self.handle, val1, 0)
 
-def readFreqInc(self):
-    self.log("Reading freqInc")
-        
+    def readFreqInc(self):
+        self.log("Reading freqInc")
         b0 = self.read(self.handle,0x87,1).value
         b1 = self.read(self.handle,0x86,1).value
         b2 = self.read(self.handle,0x85,1).value
@@ -209,39 +212,36 @@ def readFreqInc(self):
         self.write(self.handle, val1, 0)
         self.write(self.handle, val2, 0)
 
-def readSettlingTimeCycles(self):
-    self.log("Reading settlingTimeCycles")
-        
+    def readSettlingTimeCycles(self):
+        self.log("Reading settlingTimeCycles")
         cycles = self.read(self.handle,0x8B,1).value
         multiplier = self.read(self.handle,0x8A,1).value
     
     
     def writeSettlingTimeCycles(self):
         self.log("Writting settlingTimeCycles")
-        
         cyclesVal = int(hex(self.NUM_SETTLING_TIME_CYCLES) + '8B',0)
-        
         self.write(self.handle, cyclesVal, 0)
         self.write(self.handle, 0x008A, 0);
 
-def enterStandbyMode(self):
-    self.log("Entering standby mode")
+    def enterStandbyMode(self):
+        self.log("Entering standby mode")
         self.write(self.handle, 0xB080, 0)
 
     def enterPowerdownMode(self):
         self.log("Entering powerdown mode")
         self.write(self.handle, 0xA080, 0)
 
-def enableExternalOscillator(self):
-    self.log("Enabling external oscillator")
+    def enableExternalOscillator(self):
+        self.log("Enabling external oscillator")
         self.write(self.handle,0x0881,0)
 
     def setDefaultExitationRangeAndPGA(self):
         self.log("Setting output exitation and PGA to default")
         self.write(self.handle,0x0180,0)
 
-def initSensorWithStartFreq(self):
-    self.log("Initializing sensor with start freq")
+    def initSensorWithStartFreq(self):
+        self.log("Initializing sensor with start freq")
         self.write(self.handle,0x1080,0)
 
     def startFreqSweep(self):
@@ -267,42 +267,42 @@ def initSensorWithStartFreq(self):
                 realData &= 0x7FFF
                 realData -= 65536
 
-    imaginaryDataUpper = self.read(self.handle,0x96,1).value
+        imaginaryDataUpper = self.read(self.handle,0x96,1).value
         imaginaryDataLower = self.read(self.handle,0x97,1).value
-            imaginaryData = imaginaryDataLower + (imaginaryDataUpper * 256)
-            #imaginary data is stored in 16bit 2s complement format
-            #must be converted to decimal format
-            if imaginaryData > 0x7FFF:
-                #negative
-                imaginaryData &= 0x7FFF
-                imaginaryData -= 65536
+        imaginaryData = imaginaryDataLower + (imaginaryDataUpper * 256)
+        #imaginary data is stored in 16bit 2s complement format
+        #must be converted to decimal format
+        if imaginaryData > 0x7FFF:
+            #negative
+            imaginaryData &= 0x7FFF
+            imaginaryData -= 65536
 
         #calculate impedance and phase of data at this freq sweep point
         magnitude = pow((pow(realData,2) + pow(imaginaryData,2)), 0.5)
-            calibMidPoint = self.START_FREQ + ((self.FREQ_INC * self.NUM_FREQ_INC) / 2.0)
-            sweepPhase = self.phaseSweep(realData,imaginaryData) - calibMidPoint
+        calibMidPoint = self.START_FREQ + ((self.FREQ_INC * self.NUM_FREQ_INC) / 2.0)
+        sweepPhase = self.phaseSweep(realData,imaginaryData) - calibMidPoint
             
-            impedance = 1.0 / (magnitude * self.GAIN_FACTOR)
+        impedance = 1.0 / (magnitude * self.GAIN_FACTOR)
             
-            self.sweepData['impedanceArray'].append(impedance)
-            self.sweepData['phaseArray'].append(sweepPhase)
-            self.sweepData['imaginaryDataArray'].append(imaginaryData)
-            self.sweepData['magnitudeArray'].append(realData)
-            self.sweepData['realDataArray'].append(magnitude)
-            self.sweepData['frequencyList'].append(self.curFreq)
+        self.sweepData['impedanceArray'].append(impedance)
+        self.sweepData['phaseArray'].append(sweepPhase)
+        self.sweepData['imaginaryDataArray'].append(imaginaryData)
+        self.sweepData['magnitudeArray'].append(realData)
+        self.sweepData['realDataArray'].append(magnitude)
+        self.sweepData['frequencyList'].append(self.curFreq)
             
-            self.curFreqInc -= 1
-            self.curFreq += self.FREQ_INC
+        self.curFreqInc -= 1
+        self.curFreq += self.FREQ_INC
             
-            readbackStatusRegister = self.read(self.handle, 0x8F, 1).value & 0x04
+        readbackStatusRegister = self.read(self.handle, 0x8F, 1).value & 0x04
             
-            #update freq point frequency
-            self.write(self.handle,0x3080,0)
+        #update freq point frequency
+        self.write(self.handle,0x3080,0)
 
-#powerdown
-#self.enterPowerdownMode()
-self.log("Sweep Complete")
-    return self.sweepData
+    #powerdown
+    #self.enterPowerdownMode()
+    self.log("Sweep Complete")
+        return self.sweepData
     
     def reset(self):
         self.curFreqInc = self.NUM_FREQ_INC

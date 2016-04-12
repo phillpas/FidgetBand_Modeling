@@ -2,7 +2,9 @@ import serial
 from time import sleep
 
 class ConnManager:
-
+    '''
+    This class is used to select the input/output electrode pair using a multiplexer
+    '''
     def __init__(self,numElectrodes):
         self.numElectrodes = numElectrodes
         self.conn = serial.Serial('COM6',9600)
@@ -13,7 +15,6 @@ class ConnManager:
             for j in xrange(i-1,-1,-1):
                 writeVal = str(i) + str(j)
                 self.conn.write(writeVal)
-                #sleep(0.3)
 
     def connectElectrodes(self,e1,e2):
         val = str(e1) + str(e2)

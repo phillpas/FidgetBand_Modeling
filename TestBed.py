@@ -14,7 +14,9 @@ from sklearn.preprocessing import StandardScaler
 
 
 class TestBed:
-
+    '''
+    This class contains various functions for performing tests/data analysis using the AD5933 evaluation kit
+    '''
     def __init__(self):
         self.ad5933 = AD5933.AD5933("C:\\Program Files (x86)\\Analog Devices\\AD5933\\ADI_CYUSB_USB4.dll")
         boards = self.ad5933.findBoards()[1]
@@ -200,11 +202,5 @@ class TestBed:
 
 
 tester = TestBed()
-#tester.barTest()
 tester.classifyTest()
-'''gestLabel = input("Gesture: ")
-numSamples = input("Num Samples: ")
-
-data = tester.collectGestureSamples(gestLabel,numSamples)
-tester.logData_SVM(gestLabel,data)'''
 
